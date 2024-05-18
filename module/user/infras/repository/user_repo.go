@@ -1,14 +1,15 @@
-package repository
+package userrepository
 
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"my-shop/common"
 	userdomain "my-shop/module/user/domain"
 )
 
-const TbName = "users"
+const TbUserName = "users"
 
 type userMySQLRepo struct {
 	db *gorm.DB
@@ -21,7 +22,20 @@ func NewUserRepo(db *gorm.DB) userMySQLRepo {
 func (repo userMySQLRepo) FindByEmail(ctx context.Context, email string) (*userdomain.User, error) {
 	var dto UserDTO
 
-	if err := repo.db.Table(TbName).Where("email = ?", email).First(&dto).Error; err != nil {
+	if err := repo.db.Table(TbUserName).Where("email = ?", email).First(&dto).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.ErrRecordNotFound
+		}
+		return nil, err
+	}
+
+	return dto.ToEntity()
+}
+
+func (repo userMySQLRepo) FindByID(ctx context.Context, id uuid.UUID) (*userdomain.User, error) {
+	var dto UserDTO
+
+	if err := repo.db.Table(TbUserName).Where("id = ?", id).First(&dto).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.ErrRecordNotFound
 		}
@@ -44,7 +58,7 @@ func (repo userMySQLRepo) Create(ctx context.Context, data *userdomain.User) err
 		Role:        data.Role().String(),
 	}
 
-	if err := repo.db.Table(TbName).Create(&dto).Error; err != nil {
+	if err := repo.db.Table(TbUserName).Create(&dto).Error; err != nil {
 		return err
 	}
 
